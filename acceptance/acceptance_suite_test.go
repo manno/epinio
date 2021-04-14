@@ -30,9 +30,11 @@ func TestAcceptance(t *testing.T) {
 var nodeSuffix, nodeTmpDir string
 var serverURL string
 
+var registryMirrorName = "epinio-acceptance-registry-mirror"
+
 const (
-	registryMirrorName = "epinio-acceptance-registry-mirror"
-	networkName        = "epinio-acceptance"
+	networkName       = "epinio-acceptance"
+	registryMirrorEnv = "EPINIO_REGISTRY_CONFIG"
 )
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -124,6 +126,10 @@ func ensureRegistryNetwork() {
 }
 
 func ensureRegistryMirror() {
+	if os.Getenv(registryMirrorEnv) != "" {
+		return
+	}
+
 	out, err := RunProc(fmt.Sprintf("docker ps --filter name=%s -q", registryMirrorName), "", false)
 	if err != nil {
 		panic(err)
@@ -139,11 +145,11 @@ func ensureRegistryMirror() {
 }
 
 func ensureCluster() {
-	k3dConfigContents := fmt.Sprintf(`
-mirrors:
-  "docker.io":
-    endpoint:
-      - http://%s:5000`, registryMirrorName)
+	k3dConfigContents := fmt.Sprintf(`{"mirrors":{"docker.io":{"endpoint":["http://%s:5000"]}}}`, registryMirrorName)
+	if os.Getenv(registryMirrorEnv) != "" {
+		k3dConfigContents = os.Getenv(registryMirrorEnv)
+		fmt.Printf("Using custom registry mirror config from '%s' for docker.io images\n", registryMirrorEnv)
+	}
 
 	tmpk3dConfig, err := helpers.CreateTmpFile(k3dConfigContents)
 	if err != nil {
