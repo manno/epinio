@@ -39,15 +39,19 @@ jobs:
       - name: Create CHECKSUMS
         if: steps.branch.outputs.BRANCH_NAME == 'main'
         run: ( cd dist ; sha256sum -b epinio* > SHA256SUM.txt )
-      - name: Generate Changelog
-        uses: heinrichreimer/github-changelog-generator-action@v2.1.1
+
+      - name: Get current tag
+        id: get_tag
+        run: echo ::set-output name=TAG::${GITHUB_REF/refs\/heads\//}
+
+      # Drafts your next Release notes as Pull Requests are merged into "master"
+      - uses: release-drafter/release-drafter@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          pullRequests: "false"
-          onlyLastTag: "true"
-          stripGeneratorNotice: "true"
-          issuesWoLabels: "true"
-          stripHeaders: "true"
+          name: "Epinio Release ${{ steps.get_tag.outputs.TAG }} 🌈"
+          tag: ${{ steps.get_tag.outputs.TAG }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Release Epinio
         uses: softprops/action-gh-release@v1
         if: steps.branch.outputs.BRANCH_NAME == 'main'
